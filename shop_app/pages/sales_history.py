@@ -75,19 +75,37 @@ col1.metric("Total Sales", f"${total_sales:.2f}")
 col2.metric("Number of Sales", len(merged_df))
 col3.metric("Unique Products Sold", merged_df['product_id'].nunique())
 
-# Display sales trend
-st.subheader("Sales Trend")
+
+# Display sales trend as interactive bar chart
+st.subheader("Sales Trend (Daily Sales)")
 daily_sales = merged_df.copy()
 daily_sales['date'] = daily_sales['date_of_sale'].dt.date
 daily_sales = daily_sales.groupby('date')['total_price'].sum().reset_index()
 
-chart = alt.Chart(daily_sales).mark_line().encode(
-    x='date:T',
-    y='total_price:Q'
+bar_chart = alt.Chart(daily_sales).mark_bar(size=30, color='#4F8DFD').encode(
+    x=alt.X('date:T', title='Date'),
+    y=alt.Y('total_price:Q', title='Total Sales'),
+    tooltip=[alt.Tooltip('date:T', title='Date'), alt.Tooltip('total_price:Q', title='Total Sales ($)', format=',.2f')]
 ).properties(
-    title='Sales Over Time'
+    title='Total Sales Per Day',
+    height=350
 )
-st.altair_chart(chart, use_container_width=True)
+st.altair_chart(bar_chart.interactive(), use_container_width=True)
+
+# Top selling products chart
+st.subheader("Top Selling Products")
+top_products = merged_df.groupby('product_name')['total_price'].sum().reset_index()
+top_products = top_products.sort_values('total_price', ascending=False).head(10)
+
+product_chart = alt.Chart(top_products).mark_bar(size=20, color='#00C49A').encode(
+    x=alt.X('total_price:Q', title='Total Sales ($)', axis=alt.Axis(format=',.2f')),
+    y=alt.Y('product_name:N', sort='-x', title='Product'),
+    tooltip=[alt.Tooltip('product_name:N', title='Product'), alt.Tooltip('total_price:Q', title='Total Sales ($)', format=',.2f')]
+).properties(
+    title='Top 10 Products by Sales',
+    height=350
+)
+st.altair_chart(product_chart.interactive(), use_container_width=True)
 
 # Display detailed sales data
 st.subheader("Sales Details")
