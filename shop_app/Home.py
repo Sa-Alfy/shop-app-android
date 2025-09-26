@@ -23,9 +23,26 @@ def export_data_to_csv():
                 mime='text/csv'
             )
         # Export sales data
-        if st.session_state.sales_data:
+        if st.session_state.sales_data and st.session_state.stock_data:
             sales_df = pd.DataFrame(st.session_state.sales_data)
-            sales_csv = sales_df.to_csv(index=False).encode('utf-8')
+            stock_df = pd.DataFrame(st.session_state.stock_data)
+            
+            # Merge sales with stock to get product name and purchase price
+            merged_df = pd.merge(
+                sales_df,
+                stock_df[['product_id', 'product_name', 'purchase_price']],
+                on='product_id',
+                how='left'
+            )
+            
+            # Calculate profit
+            merged_df['profit'] = (merged_df['total_price'] / merged_df['quantity_sold']) - pd.to_numeric(merged_df['purchase_price'], errors='coerce').fillna(0)
+            merged_df['profit'] = merged_df['profit'] * merged_df['quantity_sold']
+
+            # Reorder columns for a cleaner export
+            export_df = merged_df[['date_of_sale', 'product_id', 'product_name', 'quantity_sold', 'total_price', 'profit']]
+            
+            sales_csv = export_df.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="Download Sales Data",
                 data=sales_csv,
@@ -60,34 +77,30 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-def main():
-    st.title("Shop Management System 🏪")
-    
-    # Initialize session state for data storage
-    if 'stock_data' not in st.session_state:
-        st.session_state.stock_data = []
-    if 'sales_data' not in st.session_state:
-        st.session_state.sales_data = []
-    
-    st.header("Welcome to Shop Management System")
-    
-    # Data Storage Options in main area
-    st.subheader("Data Management")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("**Export your data as CSV files:**")
-        export_data_to_csv()
-    with col2:
-        st.markdown("**Import your data from CSV files:**")
-        import_data_from_csv()
+st.title("Shop Management System 🏪")
 
-    # Show quick summary
-    if st.session_state.stock_data:
-        st.subheader("Current Stock Summary")
-        df = pd.DataFrame(st.session_state.stock_data)
-        st.dataframe(df, use_container_width=True)
-    else:
-        st.info("No stock data available. Add some stock to get started!")
+# Initialize session state for data storage
+if 'stock_data' not in st.session_state:
+    st.session_state.stock_data = []
+if 'sales_data' not in st.session_state:
+    st.session_state.sales_data = []
 
-if __name__ == "__main__":
-    main()
+st.header("Welcome to Shop Management System")
+
+# Data Storage Options in main area
+st.subheader("Data Management")
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("**Export your data as CSV files:**")
+    export_data_to_csv()
+with col2:
+    st.markdown("**Import your data from CSV files:**")
+    import_data_from_csv()
+
+# Show quick summary
+if st.session_state.stock_data:
+    st.subheader("Current Stock Summary")
+    df = pd.DataFrame(st.session_state.stock_data)
+    st.dataframe(df, use_container_width=True)
+else:
+    st.info("No stock data available. Add some stock to get started!")
